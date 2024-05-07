@@ -1,3 +1,4 @@
+# Checking if the powershell version is greater than or equal to 7
 if (($host.Name -eq 'ConsoleHost') -and ($PSVersionTable.PSVersion.Major -ge 7))
 {
     if(-not(Get-Module -ListAvailable -Name PSReadLine))
@@ -48,13 +49,11 @@ function poweroff
     shutdown -s -t 0
 }
 
-write-output 'll'
 function ll
 {
     Get-ChildItem -Path $PWD -Directory -Force -Hidden
 }
 
-write-output 'sudo'
 # implementation of sudo in windows
 function sudo
 {
@@ -66,10 +65,13 @@ function sudo
 }
 
 
-write-output 'chcode'
 # experimental function
 function code
-{ try
+{param(
+        [Parameter()]
+        [switch] $chloc
+    )
+    try
     {if(!(Test-CmdLets -cmd fd) )
         {
             write-output "fd...."
@@ -91,8 +93,17 @@ function code
             { Write-Error $_
             }
         }
-        $location=(  fd --path-separator \ --full-path Code -t d --exclude node_modules --exclude build --exclude pkg | fzf )
-        Start-Process $editor -WorkingDirectory "~\$location"
+        $location=(  fd --path-separator \ --full-path Code -t d --exclude node_modules --exclude build --exclude pkg --max-depth 5| fzf )
+        if(($null -ne $location) -and (!$chloc))
+        {
+            nvim.exe $location
+        } elseif($location -and $chloc)
+        {
+            Set-Location $location
+        }
+        Write-Output "Do Something productive"
+
+        # Start-Process $editor -WorkingDirectory "~\$location"
     } catch
     {
         Write-Error $_
@@ -100,20 +111,16 @@ function code
 }
 
 # reload the powershell profile
-write-output 'Done importing profile.....'
 function Test-Config
 { . $PROFILE
 }
-
-# Test the passed commands
+Set-Alias -Name rc -Value Test-Config
 
 Set-Alias -Name g -Value "git"
 Set-Alias -Name touch -Value "New-Item"
 Set-Alias -Name obsi -Value "C:\Program Files\Obsidian\Obsidian.exe"
 Set-Alias -Name l -Value Get-ChildItem
-Set-Alias -Name rc -Value Test-Config
 
-#endregion
+Clear-Host
 
-
-# nvim (  fd --path-separator \ --full-path Code  -t f  --exclude node_modules --exclude build --exclude pkg | fzf )
+write-output 'Done importing profile.....'
