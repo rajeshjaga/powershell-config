@@ -1,19 +1,61 @@
-$githubup = Test-Connection -Count 1 github.com -Quiet -TimeoutSeconds 1 -ErrorAction SilentlyContinue 
 if (($host.Name -eq 'ConsoleHost') -and ($PSVersionTable.PSVersion.Major -ge 7))
 {
-    if(!(Get-Module -Name PSReadLine))
+    if(-not(Get-Module -ListAvailable -Name PSReadLine))
     {
-        Install-Module -Name PSReadLine -Scope CurrentUser -Force -SkipPublisherCheck
+        Install-Module -Name PSReadLine -Scope CurrentUser -Force -SkipPublisherCheck -Verbose
     }
     Import-Module -Name PSReadLine
     Set-PSReadLineOption -HistoryNoDuplicates -PredictionSource HistoryAndPlugin -PredictionViewStyle ListView
-    if(!(Get-Module -Name Terminal-Icons))
+
+    if(-not(Get-Module -ListAvailable -Name Terminal-Icons))
     {
         Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
     }
     Import-Module -Name Terminal-Icons
 }
 
+function Test-CmdLets
+{
+    param( $cmd )
+    $cmdStat=$null -ne (Get-Command $cmd -ErrorAction SilentlyContinue)
+    return $cmdStat
+}
+
+# try open an text editor
+$editor=if (Test-CmdLets nvim)
+{ 'nvim'
+} elseif (Test-CmdLets vim)
+{'vim'
+} elseif (Test-CmdLets code)
+{'code'
+} elseif (Test-CmdLets notepad)
+{'notepad'
+} elseif (Test-CmdLets notepad++)
+{'notepad++'
+} 
+Set-Alias -Name vim -Value $editor
+
+
+# poweroff system immediately
+function reboot
+{
+    shutdown -r -t 0
+}
+
+# Reboot system immediately
+function poweroff
+{
+    shutdown -s -t 0
+}
+
+write-output 'll'
+function ll
+{
+    Get-ChildItem -Path $PWD -Directory -Force -Hidden
+}
+
+write-output 'sudo'
+# implementation of sudo in windows
 function sudo
 {
     param (
@@ -23,80 +65,51 @@ function sudo
     Start-Process  $run -Verb runas -WorkingDirectory $PWD
 }
 
-function Update-Profile
-{
-    if($githubup)
-    {
-        try
+
+write-output 'chcode'
+# experimental function
+function code
+{ try
+    {if(!(Test-CmdLets -cmd fd) )
         {
-            # $newData= Invoke-RestMethod
-        } catch
-        { Write-Error $_
-        } finally
-        { Test-Config
+            write-output "fd...."
+            try
+            {winget install --id sharkdp.fd --force --scope user --silent
+                write-output "fd installed"
+            } catch
+            {
+                Write-Error $_
+            }
         }
-    } elseif ($githubup -eq $false)
-    { Write-Host "Check your internet connection, this device might not have internet or github's down" -ForegroundColor Yellow
-    } else
-    { Write-Output 'Something went wrong while connecting to internet'
+        if(!(Test-CmdLets -cmd fzf))
+        {
+            write-output "fzf"
+            try
+            {  winget install --id junegunn.fzf --force --scope user --silent
+                write-output "installed fzf"
+            } catch
+            { Write-Error $_
+            }
+        }
+        $location=(  fd --path-separator \ --full-path Code -t d --exclude node_modules --exclude build --exclude pkg | fzf )
+        Start-Process $editor -WorkingDirectory "~\$location"
+    } catch
+    {
+        Write-Error $_
     }
 }
 
-function chcode
-{ Set-Location (  fd --path-separator \ --full-path Code -t d --exclude node_modules --exclude build --exclude pkg | fzf ); nvim
-}
-
+# reload the powershell profile
+write-output 'Done importing profile.....'
 function Test-Config
-{ & $PROFILE
+{ . $PROFILE
 }
 
-function Test-CmdLets
-{
-    param(
-        [Parameter()]
-        [String] $cmd
-    )
-    if( Get-Command $cmd -ErrorAction SilentlyContinue)
-    { return $true
-    } else
-    { return $false
-    }
-}
+# Test the passed commands
 
-function editor
-{
-    if (Test-CmdLets -cmd nvim)
-    { nvim.exe 
-    } elseif (Test-CmdLets -cmd vim)
-    {vim.exe
-    } elseif (Test-CmdLets -cmd code)
-    {code.exe
-    } elseif (Test-CmdLets -cmd notepad)
-    {notepad.exe
-    } else
-    {Write-Output 'Could not find a text editor'
-    }
-}
-
-function reboot
-{
-    shutdown -r -t 0
-}
-
-function poweroff
-{
-    shutdown -s -t 0
-}
-
-function ll
-{
-    Get-ChildItem -Path $PWD -Directory -Force -Hidden
-}
-Set-Alias -Name vim -Value editor
 Set-Alias -Name g -Value "git"
 Set-Alias -Name touch -Value "New-Item"
 Set-Alias -Name obsi -Value "C:\Program Files\Obsidian\Obsidian.exe"
-Set-Alias -Name code -Value chcode
 Set-Alias -Name l -Value Get-ChildItem
 Set-Alias -Name rc -Value Test-Config
 
