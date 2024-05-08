@@ -64,6 +64,34 @@ function sudo
     Start-Process  $run -Verb runas -WorkingDirectory $PWD
 }
 
+function df
+{
+    Get-Volume
+}
+function grep($regex,$dir)
+{
+    if( $dir )
+    {
+        get-ChildItem $dir | Select-String $regex
+    }
+    $input | Select-String $regex
+}
+
+function which ($name)
+{
+    Get-Command $name | Select-Object -ExpandProperty Definition
+}
+function gcom
+{
+    git add .
+    git commit -m "$args"
+}
+function mkcd
+{ param($dir) mkdir $dir -force; Set-Location $dir 
+}
+function kill
+{ Stop-Process -Name $args[0] 
+}
 
 # experimental function
 function code
